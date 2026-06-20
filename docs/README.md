@@ -12,6 +12,7 @@ Living documentation for the **Night-Shift Handover Service**.
 | 06 | [api.md](./06-api.md) | HTTP endpoints, request/response shapes, sample `curl` |
 | 07 | [observability.md](./07-observability.md) | Structured logging, debug fields |
 | 08 | [decisions.md](./08-decisions.md) | Tradeoffs, deliberately-skipped items, hour 3–6 plan |
+| 09 | [dependencies.md](./09-dependencies.md) | Runtime + dev dependencies, why each was chosen, env vars |
 
 ## Conventions
 
