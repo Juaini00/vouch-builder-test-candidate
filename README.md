@@ -4,6 +4,28 @@ A backend that turns a hotel's overnight events — structured logs plus free-te
 
 Built as a 2-hour take-home for Vouch ([`BRIEF.md`](BRIEF.md)). Design rationale lives in [`DECISIONS.md`](DECISIONS.md); deeper docs in [`docs/`](docs/).
 
+## Live deployment
+
+**Base URL:** `https://semi-vouch-csaphjpbka-as.a.run.app` (Google Cloud Run, `asia-southeast1`)
+
+```bash
+# Liveness
+curl https://semi-vouch-csaphjpbka-as.a.run.app/health
+
+# Generate a handover for the morning of 2026-05-30 against the bundled sample data
+curl "https://semi-vouch-csaphjpbka-as.a.run.app/handover/sample?targetMorning=2026-05-30" | jq
+
+# Same, rendered as a manager-facing HTML page
+open "https://semi-vouch-csaphjpbka-as.a.run.app/handover/sample?targetMorning=2026-05-30&format=html"
+
+# POST your own payload
+curl -X POST https://semi-vouch-csaphjpbka-as.a.run.app/handover \
+  -H 'content-type: application/json' \
+  -d "$(jq '{hotel, events, nightLog: "", targetMorning: "2026-05-30"}' data/events.json)"
+```
+
+The service is public (`--allow-unauthenticated`) for review. It scales to zero, so the first request after idle may take ~3–5 s; subsequent requests are warm.
+
 ## Quick start
 
 ```bash
@@ -47,12 +69,45 @@ INGEST → EXTRACT (LLM) → NORMALIZE → THREAD → CLASSIFY → RENDER (LLM) 
                                                       handover JSON or HTML
 ```
 
-- **EXTRACT** parses free-text night logs into normalized events; every extracted event carries a source quote.
-- **THREAD** reconciles across nights — `still_open` vs `newly_resolved` vs `new_tonight`. The morning manager does not see the same open item re-reported every day.
-- **VALIDATE** is the grounding gate: any sentence whose numbers, currency, or proper nouns aren't supported by the cited evidence is stripped before the response leaves the server.
+- **EXTRACT** parses free-text night logs into normalized events — works on any language (the bundled sample mixes English and Mandarin). Every extracted event carries the verbatim source quote, which we verify is a literal substring of the input before accepting it.
+- **THREAD** reconciles across nights — `still_open` vs `newly_resolved` vs `new_tonight`. The morning manager does not see the same open item re-reported every day. A post-merge step folds room-less threads (e.g. "leak in the corridor near 215") into the matching room-bearing thread.
+- **CLASSIFY** buckets each thread into `on_fire` / `pending` / `fyi` / `flag`. Contradictions (status_conflict, system_vs_observation) and suspected prompt-injection always go to `flag`.
+- **VALIDATE** is the grounding gate: any sentence whose numbers, currency, or proper nouns aren't supported by the cited evidence is stripped before the response leaves the server. The fallback body is templated directly from event descriptions, so a failed render still produces something honest.
 - **Prompt-injection defense** quarantines suspicious events to `flags` before the prose LLM ever sees them. The sample data contains a real injection (`evt_0026`) for the reviewer to verify.
 
 LLM use is confined to stages 2 and 6. Everything else is deterministic and unit-tested.
+
+## What a handover looks like
+
+Calling the sample endpoint against the bundled data produces (truncated):
+
+```jsonc
+{
+  "handoverId": "ho_2026-05-30_lumen-sg_6eaa",
+  "hotel": { "id": "lumen-sg", "name": "Lumen Boutique Hotel" },
+  "targetMorning": "2026-05-30",
+  "shiftWindow": { "from": "2026-05-29T23:00:00+08:00", "to": "2026-05-30T07:00:00+08:00" },
+  "sections": {
+    "onFire":  [ /* 5 items — passport scan backlog, safe locked 208, medical 301, damage 226, deposit 309 */ ],
+    "pending": [ /* 7 items — aircon 112, OTA name mismatch 309, breakfast, early-checkout 220, … */ ],
+    "fyi":     [ /* 1 item  — parcel 117 */ ],
+    "flags":   [
+      { "title": "Contradiction: no show (room 312)", "evidence": [3 sources spanning Wed/Thu/Fri], … },
+      { "title": "Contradiction: occupancy mismatch (room 205)", … },
+      { "title": "Suspicious input (room 214) — quarantined", … }
+    ]
+  },
+  "meta": {
+    "eventsIngested": 26,
+    "extractedFromProse": 8,
+    "threadsBuilt": 16,
+    "llmCalls": 14,
+    "warnings": [ /* per-thread grounding-fallback notices, etc. */ ]
+  }
+}
+```
+
+Every `HandoverItem` carries an `evidence[]` array; every entry points at a `sourceRef` (e.g. `events.json#evt_0014` or `night-logs.md`) and the literal `quote` that supports the statement. This is the contract the brief asked us to enforce.
 
 ## LLM providers
 
