@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { CanonicalEvent } from '../../common/types';
 import { shiftDateFor } from '../../common/time';
-import { DeepseekClient } from '../../llm/deepseek.client';
+import { LlmClient } from '../../llm/llm.client';
 import {
   EXTRACT_NIGHTLOG_SYSTEM,
   buildExtractUserPrompt,
@@ -36,7 +36,7 @@ export interface ExtractResult {
 export class ExtractStage {
   private readonly logger = new Logger(ExtractStage.name);
 
-  constructor(private readonly llm: DeepseekClient) {}
+  constructor(private readonly llm: LlmClient) {}
 
   async run(
     nightLog: string | undefined,

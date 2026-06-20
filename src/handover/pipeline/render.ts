@@ -6,7 +6,7 @@ import {
   HandoverItem,
   IncidentThread,
 } from '../../common/types';
-import { DeepseekClient } from '../../llm/deepseek.client';
+import { LlmClient } from '../../llm/llm.client';
 import {
   SUMMARIZE_THREAD_SYSTEM,
   buildSummarizeUserPrompt,
@@ -32,7 +32,7 @@ export interface RenderResult {
 export class RenderStage {
   private readonly logger = new Logger(RenderStage.name);
 
-  constructor(private readonly llm: DeepseekClient) {}
+  constructor(private readonly llm: LlmClient) {}
 
   async run(
     classified: { thread: IncidentThread; bucket: Bucket }[],

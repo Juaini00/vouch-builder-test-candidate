@@ -1,29 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance, AxiosError } from 'axios';
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-export interface ChatCompletionResult {
-  content: string;
-  tokensIn: number;
-  tokensOut: number;
-}
-
-export interface ChatCompletionOptions {
-  jsonMode?: boolean;
-  maxOutputTokens?: number;
-  temperature?: number;
-}
+import {
+  ChatCompletionOptions,
+  ChatCompletionResult,
+  ChatMessage,
+  LlmClient,
+} from './llm.client';
 
 const MAX_RETRIES = 2;
 const RETRY_BACKOFF_MS = 500;
 
 @Injectable()
-export class DeepseekClient {
+export class DeepseekClient extends LlmClient {
+  readonly providerName = 'deepseek';
   private readonly logger = new Logger(DeepseekClient.name);
   private readonly http: AxiosInstance;
   private readonly model: string;
@@ -31,7 +21,7 @@ export class DeepseekClient {
   private readonly defaultTemperature: number;
 
   constructor(private readonly config: ConfigService) {
-    const apiKey = this.config.get<string>('DEEPSEEK_API_KEY');
+    super();
     const baseUrl = this.config.get<string>(
       'DEEPSEEK_BASE_URL',
       'https://api.deepseek.com',
@@ -40,6 +30,7 @@ export class DeepseekClient {
       this.config.get<string>('DEEPSEEK_TIMEOUT_MS', '30000'),
     );
 
+    const apiKey = this.config.get<string>('DEEPSEEK_API_KEY');
     if (!apiKey) {
       throw new Error('DEEPSEEK_API_KEY not configured');
     }
