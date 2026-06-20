@@ -80,6 +80,8 @@ The threading stage explicitly looks for contradictions inside a thread (e.g. on
 
 ## Hour 3–6 plan
 
+These are the next, concrete additions to the current build — they harden what's already shipped without rethinking the shape:
+
 1. **Persistence (Postgres).** API takes `(hotelId, targetMorning)`, service pulls the rolling event window itself. Removes the "caller posts everything" awkwardness.
 2. **Embedding-based threading fallback** for cases where the keyword taxonomy misses (e.g. paraphrased room references).
 3. **Per-hotel calibration** of on-fire thresholds (one hotel's noise complaint is FYI; another's is on-fire on repeat).
@@ -87,6 +89,16 @@ The threading stage explicitly looks for contradictions inside a thread (e.g. on
 5. **Second-model judge** running on a random sample of items to catch model-specific failure modes.
 6. **Metrics + alerting** (Prometheus) on `grounding.stripped-sentences` rate per hotel.
 7. **Multilingual stress-test corpus** — synthetic night-logs in Bahasa / Thai / Tagalog so we can measure extraction quality before a new hotel comes online.
+
+### Beyond hour 6 — the architecture this should grow into
+
+What's above is the harden-the-spike work. The bigger conversation is **how AI fits into this system at all**. The shipped build leans on the LLM at two stages because that's what fit in two hours; it is not how a service that runs unattended across hundreds of hotels should look.
+
+The target architecture is a **domain-constrained RAG (Retrieval-Augmented Generation)** system: capability catalog as a chunked knowledge base, hybrid retrieval (BM25 + vector + RRF) with a cross-encoder re-ranker, persistent reconciler, LLM-as-planner (not author), policy guard, template composer, feedback loop, and a real evaluation harness (recall@k, MRR, end-to-end golden set). Output is deterministic per-input, predictable, and auditable end-to-end; LLM call count drops from ~14 per handover to ~1–2.
+
+This needs days, not hours: a chunked knowledge layer, an embedding pipeline + eval harness, hybrid search, re-ranking, query rewriting, a template library, policy rules, audit infrastructure, and per-tenant calibration. Full write-up — including the RAG-specific design and the v1→v2 migration order — is in **[`docs/10-ideal-architecture.md`](docs/10-ideal-architecture.md)**.
+
+The current build is a working, grounded spike that proves the *product* is feasible. That doc is the engineering plan for what should come next.
 
 ---
 

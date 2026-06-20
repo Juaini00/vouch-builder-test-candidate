@@ -177,3 +177,4 @@ data/                           # sample inputs (events.json + night-logs.md)
 - [`docs/04-ai-strategy.md`](docs/04-ai-strategy.md) — where LLMs live, what they're constrained by.
 - [`docs/05-grounding.md`](docs/05-grounding.md) — the validator and injection defense in depth.
 - [`docs/conversation-log.md`](docs/conversation-log.md) — AI conversation export (per brief).
+- [`docs/10-ideal-architecture.md`](docs/10-ideal-architecture.md) — what v2 should look like given proper time: a domain-constrained **RAG** system (knowledge catalog + hybrid retrieval + re-ranker + LLM-as-planner + policy guard + template composer + eval harness). The current build leans on the LLM more than is ideal because of the 2-hour window; this doc records the target architecture so the tradeoff is explicit.
